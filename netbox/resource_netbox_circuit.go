@@ -6,6 +6,7 @@ import (
 	"github.com/fbreckle/go-netbox/netbox/client"
 	"github.com/fbreckle/go-netbox/netbox/client/circuits"
 	"github.com/fbreckle/go-netbox/netbox/models"
+	"github.com/go-openapi/strfmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
@@ -46,12 +47,30 @@ func resourceNetboxCircuit() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"commit_rate": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"install_date": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"termination_date": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"comments": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"status": {
 				Type:         schema.TypeString,
 				Required:     true,
 				ValidateFunc: validation.StringInSlice(resourceNetboxCircuitStatusOptions, false),
 				Description:  buildValidValueDescription(resourceNetboxCircuitStatusOptions),
 			},
+			customFieldsKey: customFieldsSchema,
+			tagsKey:         tagsSchema,
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -68,11 +87,49 @@ func resourceNetboxCircuitCreate(d *schema.ResourceData, m interface{}) error {
 	data.Cid = &cid
 
 	data.Status = d.Get("status").(string)
-	data.Description = d.Get("description").(string)
-	
+	descriptionValue, ok := d.GetOk("description")
+	if ok {
+		data.Description = descriptionValue.(string)
+	} else {
+		data.Description = ""
+	}
+
+	installDateValue, ok := d.GetOk("install_date")
+	if ok {
+		installDateStr := installDateValue.(string) // Get the string value
+		var parsedInstallDate strfmt.Date
+		err := parsedInstallDate.UnmarshalText([]byte(installDateStr)) // Parse it into a strfmt.Date
+		if err == nil {
+			data.InstallDate = &parsedInstallDate // Assign the parsed date if successful
+		} else {
+			return err // Return the error from UnmarshalText if parsing fails
+		}
+	} else {
+		data.InstallDate = nil // Set to nil if not provided
+	}
+
+	terminationDateValue, ok := d.GetOk("termination_date")
+	if ok {
+		terminationDateStr := terminationDateValue.(string) // Get the string value
+		var parsedTerminationDate strfmt.Date
+		err := parsedTerminationDate.UnmarshalText([]byte(terminationDateStr)) // Parse it into a strfmt.Date
+		if err == nil {
+			data.TerminationDate = &parsedTerminationDate // Assign the parsed date if successful
+		} else {
+			return err // Return the error from UnmarshalText if parsing fails
+		}
+	} else {
+		data.TerminationDate = nil // Set to nil if not provided
+	}
+
 	providerIDValue, ok := d.GetOk("provider_id")
 	if ok {
 		data.Provider = int64ToPtr(int64(providerIDValue.(int)))
+	}
+
+	commitRateValue, ok := d.GetOk("commit_rate")
+	if ok {
+		data.CommitRate = int64ToPtr(int64(commitRateValue.(int)))
 	}
 
 	typeIDValue, ok := d.GetOk("type_id")
@@ -84,8 +141,12 @@ func resourceNetboxCircuitCreate(d *schema.ResourceData, m interface{}) error {
 	if ok {
 		data.Tenant = int64ToPtr(int64(tenantIDValue.(int)))
 	}
-
-	data.Tags = []*models.NestedTag{}
+	ct, ok := d.GetOk(customFieldsKey)
+	if ok {
+		data.CustomFields = ct
+	}
+	//data.Tags = []*models.NestedTag{}
+	data.Tags, _ = getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 
 	params := circuits.NewCircuitsCircuitsCreateParams().WithData(&data)
 
@@ -127,6 +188,12 @@ func resourceNetboxCircuitRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("provider_id", nil)
 	}
 
+	if res.GetPayload().CommitRate != nil {
+		d.Set("commit_rate", res.GetPayload().CommitRate)
+	} else {
+		d.Set("commit_rate", nil)
+	}
+
 	if res.GetPayload().Type != nil {
 		d.Set("type_id", res.GetPayload().Type.ID)
 	} else {
@@ -139,12 +206,28 @@ func resourceNetboxCircuitRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("tenant_id", nil)
 	}
 
-	if res.GetPayload().Description != nil {
+	if res.GetPayload().Description != "" {
 		d.Set("description", res.GetPayload().Description)
 	} else {
-		d.Set("description", nil)
+		d.Set("description", "")
 	}
-	
+
+	if res.GetPayload().InstallDate != nil {
+		d.Set("install_date", res.GetPayload().InstallDate)
+	} else {
+		d.Set("install_date", nil)
+	}
+
+	if res.GetPayload().TerminationDate != nil {
+		d.Set("termination_date", res.GetPayload().TerminationDate)
+	} else {
+		d.Set("termination_date", nil)
+	}
+	cf := getCustomFields(res.GetPayload().CustomFields)
+	if cf != nil {
+		d.Set(customFieldsKey, cf)
+	}
+	d.Set(tagsKey, getTagListFromNestedTagList(res.GetPayload().Tags))
 	return nil
 }
 
@@ -158,11 +241,48 @@ func resourceNetboxCircuitUpdate(d *schema.ResourceData, m interface{}) error {
 	data.Cid = &cid
 
 	data.Status = d.Get("status").(string)
-	data.Description = d.Get("description").(string)
+	descriptionValue, ok := d.GetOk("description")
+	if ok {
+		data.Description = descriptionValue.(string)
+	} else {
+		data.Description = ""
+	}
+
+	installDateValue, ok := d.GetOk("install_date")
+	if ok {
+		installDateStr := installDateValue.(string) // Get the string value
+		var parsedInstallDate strfmt.Date
+		err := parsedInstallDate.UnmarshalText([]byte(installDateStr)) // Parse it into a strfmt.Date
+		if err == nil {
+			data.InstallDate = &parsedInstallDate // Assign the parsed date if successful
+		} else {
+			return err // Return the error from UnmarshalText if parsing fails
+		}
+	} else {
+		data.InstallDate = nil // Set to nil if not provided
+	}
+
+	terminationDateValue, ok := d.GetOk("termination_date")
+	if ok {
+		terminationDateStr := terminationDateValue.(string) // Get the string value
+		var parsedTerminationDate strfmt.Date
+		err := parsedTerminationDate.UnmarshalText([]byte(terminationDateStr)) // Parse it into a strfmt.Date
+		if err == nil {
+			data.TerminationDate = &parsedTerminationDate // Assign the parsed date if successful
+		} else {
+			return err // Return the error from UnmarshalText if parsing fails
+		}
+	} else {
+		data.TerminationDate = nil // Set to nil if not provided
+	}
 
 	providerIDValue, ok := d.GetOk("provider_id")
 	if ok {
 		data.Provider = int64ToPtr(int64(providerIDValue.(int)))
+	}
+	commitRateValue, ok := d.GetOk("commit_rate")
+	if ok {
+		data.CommitRate = int64ToPtr(int64(commitRateValue.(int)))
 	}
 
 	typeIDValue, ok := d.GetOk("type_id")
@@ -174,8 +294,12 @@ func resourceNetboxCircuitUpdate(d *schema.ResourceData, m interface{}) error {
 	if ok {
 		data.Tenant = int64ToPtr(int64(tenantIDValue.(int)))
 	}
-
-	data.Tags = []*models.NestedTag{}
+	ct, ok := d.GetOk(customFieldsKey)
+	if ok {
+		data.CustomFields = ct
+	}
+	//data.Tags = []*models.NestedTag{}
+	data.Tags, _ = getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 
 	params := circuits.NewCircuitsCircuitsPartialUpdateParams().WithID(id).WithData(&data)
 
