@@ -42,6 +42,10 @@ func resourceNetboxCircuit() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"status": {
 				Type:         schema.TypeString,
 				Required:     true,
@@ -64,7 +68,8 @@ func resourceNetboxCircuitCreate(d *schema.ResourceData, m interface{}) error {
 	data.Cid = &cid
 
 	data.Status = d.Get("status").(string)
-
+	data.Description = d.Get("description").(string)
+	
 	providerIDValue, ok := d.GetOk("provider_id")
 	if ok {
 		data.Provider = int64ToPtr(int64(providerIDValue.(int)))
@@ -134,6 +139,12 @@ func resourceNetboxCircuitRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("tenant_id", nil)
 	}
 
+	if res.GetPayload().Description != nil {
+		d.Set("description", res.GetPayload().Description)
+	} else {
+		d.Set("description", nil)
+	}
+	
 	return nil
 }
 
@@ -147,6 +158,7 @@ func resourceNetboxCircuitUpdate(d *schema.ResourceData, m interface{}) error {
 	data.Cid = &cid
 
 	data.Status = d.Get("status").(string)
+	data.Description = d.Get("description").(string)
 
 	providerIDValue, ok := d.GetOk("provider_id")
 	if ok {
