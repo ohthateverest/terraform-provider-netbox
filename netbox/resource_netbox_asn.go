@@ -30,7 +30,20 @@ func resourceNetboxAsn() *schema.Resource {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
-			tagsKey: tagsSchema,
+			"tenant_id": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"comments": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			tagsKey:         tagsSchema,
+			customFieldsKey: customFieldsSchema,
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -48,6 +61,30 @@ func resourceNetboxAsnCreate(d *schema.ResourceData, m interface{}) error {
 
 	rir := int64(d.Get("rir_id").(int))
 	data.Rir = &rir
+
+	tenantIDValue, ok := d.GetOk("tenant_id")
+	if ok {
+		data.Tenant = int64ToPtr(int64(tenantIDValue.(int)))
+	}
+
+	commentsValue, ok := d.GetOk("comments")
+	if ok {
+		data.Comments = commentsValue.(string)
+	} else {
+		data.Comments = ""
+	}
+
+	descriptionValue, ok := d.GetOk("description")
+	if ok {
+		data.Description = descriptionValue.(string)
+	} else {
+		data.Description = ""
+	}
+
+	ct, ok := d.GetOk(customFieldsKey)
+	if ok {
+		data.CustomFields = ct
+	}
 
 	data.Tags, _ = getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 
@@ -86,6 +123,24 @@ func resourceNetboxAsnRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("asn", asn.Asn)
 	d.Set("rir_id", asn.Rir.ID)
 
+	if res.GetPayload().Tenant != nil {
+		d.Set("tenant_id", res.GetPayload().Tenant.ID)
+	} else {
+		d.Set("tenant_id", nil)
+	}
+
+	if res.GetPayload().Description != "" {
+		d.Set("description", res.GetPayload().Description)
+	} else {
+		d.Set("description", "")
+	}
+
+	cf := getCustomFields(res.GetPayload().CustomFields)
+	if cf != nil {
+		d.Set(customFieldsKey, cf)
+	}
+	d.Set("comments", res.GetPayload().Comments)
+
 	d.Set(tagsKey, getTagListFromNestedTagList(asn.Tags))
 
 	return nil
@@ -102,6 +157,29 @@ func resourceNetboxAsnUpdate(d *schema.ResourceData, m interface{}) error {
 
 	rir := int64(d.Get("rir_id").(int))
 	data.Rir = &rir
+	tenantIDValue, ok := d.GetOk("tenant_id")
+	if ok {
+		data.Tenant = int64ToPtr(int64(tenantIDValue.(int)))
+	}
+
+	commentsValue, ok := d.GetOk("comments")
+	if ok {
+		data.Comments = commentsValue.(string)
+	} else {
+		data.Comments = ""
+	}
+
+	descriptionValue, ok := d.GetOk("description")
+	if ok {
+		data.Description = descriptionValue.(string)
+	} else {
+		data.Description = ""
+	}
+
+	ct, ok := d.GetOk(customFieldsKey)
+	if ok {
+		data.CustomFields = ct
+	}
 
 	data.Tags, _ = getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 

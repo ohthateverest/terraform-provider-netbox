@@ -145,6 +145,9 @@ func resourceNetboxCircuitCreate(d *schema.ResourceData, m interface{}) error {
 	if ok {
 		data.CustomFields = ct
 	}
+
+	data.Comments = d.Get("comments").(string)
+
 	//data.Tags = []*models.NestedTag{}
 	data.Tags, _ = getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 
@@ -227,6 +230,8 @@ func resourceNetboxCircuitRead(d *schema.ResourceData, m interface{}) error {
 	if cf != nil {
 		d.Set(customFieldsKey, cf)
 	}
+	d.Set("comments", res.GetPayload().Comments)
+
 	d.Set(tagsKey, getTagListFromNestedTagList(res.GetPayload().Tags))
 	return nil
 }
@@ -298,6 +303,9 @@ func resourceNetboxCircuitUpdate(d *schema.ResourceData, m interface{}) error {
 	if ok {
 		data.CustomFields = ct
 	}
+
+	data.Comments = d.Get("comments").(string)
+
 	//data.Tags = []*models.NestedTag{}
 	data.Tags, _ = getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 
