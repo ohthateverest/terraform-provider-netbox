@@ -40,6 +40,7 @@ func TestAccNetboxCircuit_basic(t *testing.T) {
 resource "netbox_circuit" "test" {
   cid = "%[1]s"
   status = "active"
+  description = "description test"
   provider_id = netbox_circuit_provider.test.id
   type_id = netbox_circuit_type.test.id
 }`, testName),
@@ -54,6 +55,7 @@ resource "netbox_circuit" "test" {
 resource "netbox_circuit" "test" {
   cid = "%[1]s"
   status = "active"
+  description = "description test"
   provider_id = netbox_circuit_provider.test.id
   type_id = netbox_circuit_type.test.id
   tenant_id = netbox_tenant.test.id
