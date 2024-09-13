@@ -32,7 +32,11 @@ func resourceNetboxCircuitTermination() *schema.Resource {
 			},
 			"site_id": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
+			},
+			"provider_network": {
+				Type:     schema.TypeInt,
+				Optional: true,
 			},
 			"port_speed": {
 				Type:     schema.TypeInt,
@@ -73,6 +77,11 @@ func resourceNetboxCircuitTerminationCreate(d *schema.ResourceData, m interface{
 	siteIDValue, ok := d.GetOk("site_id")
 	if ok {
 		data.Site = int64ToPtr(int64(siteIDValue.(int)))
+	}
+
+	providerNetworkIDValue, ok := d.GetOk("provider_network")
+	if ok {
+		data.ProviderNetwork = int64ToPtr(int64(providerNetworkIDValue.(int)))
 	}
 
 	portspeedValue, ok := d.GetOk("port_speed")
@@ -139,6 +148,12 @@ func resourceNetboxCircuitTerminationRead(d *schema.ResourceData, m interface{})
 		d.Set("site_id", nil)
 	}
 
+	if term.ProviderNetwork != nil {
+		d.Set("provider_network", term.ProviderNetwork.ID)
+	} else {
+		d.Set("provider_network", nil)
+	}
+
 	if term.PortSpeed != nil {
 		d.Set("port_speed", term.PortSpeed)
 	} else {
@@ -178,6 +193,10 @@ func resourceNetboxCircuitTerminationUpdate(d *schema.ResourceData, m interface{
 	siteIDValue, ok := d.GetOk("site_id")
 	if ok {
 		data.Site = int64ToPtr(int64(siteIDValue.(int)))
+	}
+	providerNetworkIDValue, ok := d.GetOk("provider_network")
+	if ok {
+		data.ProviderNetwork = int64ToPtr(int64(providerNetworkIDValue.(int)))
 	}
 
 	portspeedValue, ok := d.GetOk("port_speed")

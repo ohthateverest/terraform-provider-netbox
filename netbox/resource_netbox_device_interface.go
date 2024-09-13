@@ -71,6 +71,10 @@ func resourceNetboxDeviceInterface() *schema.Resource {
 				ValidateFunc: validation.StringInSlice(resourceNetboxDeviceInterfaceModeOptions, false),
 				Description:  buildValidValueDescription(resourceNetboxDeviceInterfaceModeOptions),
 			},
+			"module_id": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
 			"mtu": {
 				Type:         schema.TypeInt,
 				Optional:     true,
@@ -120,12 +124,14 @@ func resourceNetboxDeviceInterfaceCreate(ctx context.Context, d *schema.Resource
 	enabled := d.Get("enabled").(bool)
 	mgmtonly := d.Get("mgmtonly").(bool)
 	mode := d.Get("mode").(string)
+
 	tags, diagnostics := getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 	if diagnostics != nil {
 		diags = append(diags, diagnostics...)
 	}
 	taggedVlans := toInt64List(d.Get("tagged_vlans"))
 	deviceID := int64(d.Get("device_id").(int))
+	moduleID := int64(d.Get("module_id").(int))
 
 	data := models.WritableInterface{
 		Name:         &name,
@@ -140,6 +146,11 @@ func resourceNetboxDeviceInterfaceCreate(ctx context.Context, d *schema.Resource
 		Device:       &deviceID,
 		WirelessLans: []int64{},
 		Vdcs:         []int64{},
+	}
+	if moduleID != 0 {
+		data.Module = int64ToPtr(int64(moduleID))
+	} else {
+		data.Module = nil
 	}
 	if macAddress := d.Get("mac_address").(string); macAddress != "" {
 		data.MacAddress = &macAddress
@@ -220,7 +231,9 @@ func resourceNetboxDeviceInterfaceRead(ctx context.Context, d *schema.ResourceDa
 	if iface.UntaggedVlan != nil {
 		d.Set("untagged_vlan", iface.UntaggedVlan.ID)
 	}
-
+	if iface.Module != nil {
+		d.Set("module_id", iface.Module.ID)
+	}
 	return diags
 }
 
@@ -283,6 +296,11 @@ func resourceNetboxDeviceInterfaceUpdate(ctx context.Context, d *schema.Resource
 	if d.HasChange("untagged_vlan") {
 		untaggedvlan := int64(d.Get("untagged_vlan").(int))
 		data.UntaggedVlan = &untaggedvlan
+	}
+
+	if d.HasChange("module_id") {
+		moduleid := int64(d.Get("module_id").(int))
+		data.Module = &moduleid
 	}
 
 	params := dcim.NewDcimInterfacesPartialUpdateParams().WithID(id).WithData(&data)

@@ -62,6 +62,7 @@ resource "netbox_circuit" "test" {
 }`, testName, randomSlug),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("netbox_circuit.test", "cid", testName),
+					resource.TestCheckResourceAttr("netbox_circuit.test", "description", "description test"),
 					resource.TestCheckResourceAttrPair("netbox_circuit.test", "provider_id", "netbox_circuit_provider.test", "id"),
 					resource.TestCheckResourceAttrPair("netbox_circuit.test", "type_id", "netbox_circuit_type.test", "id"),
 					resource.TestCheckResourceAttrPair("netbox_circuit.test", "tenant_id", "netbox_tenant.test", "id"),

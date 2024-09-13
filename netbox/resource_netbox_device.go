@@ -392,6 +392,12 @@ func resourceNetboxDeviceRead(ctx context.Context, d *schema.ResourceData, m int
 	d.Set("virtual_chassis_position", device.VcPosition)
 	d.Set("virtual_chassis_priority", device.VcPriority)
 
+	if device.ParentDevice != nil {
+		d.Set("parent_device_id", device.ParentDevice.ID)
+	} else {
+		d.Set("parent_device_id", nil)
+	}
+
 	if device.LocalContextData != nil {
 		if jsonArr, err := json.Marshal(device.LocalContextData); err == nil {
 			d.Set("local_context_data", string(jsonArr))

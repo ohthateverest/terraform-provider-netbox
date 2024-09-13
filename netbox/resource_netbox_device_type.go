@@ -10,6 +10,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
+var resourceNetboxDeviceTypeAirflowOptions = []string{"front-to-rear", "rear-to-front", "left-to-right", "right-to-left", "side-to-rear", "passive", "mixed"}
+var resourceNetboxDeviceTypeSubdeviceRoleOptions = []string{"parent", "child"}
+
 func resourceNetboxDeviceType() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceNetboxDeviceTypeCreate,
@@ -49,6 +52,20 @@ func resourceNetboxDeviceType() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"airflow": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice(resourceNetboxDeviceTypeAirflowOptions, false),
+				Description:  buildValidValueDescription(resourceNetboxDeviceTypeAirflowOptions),
+				Default:      "active",
+			},
+			"subdevice_role": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice(resourceNetboxDeviceTypeSubdeviceRoleOptions, false),
+				Description:  buildValidValueDescription(resourceNetboxDeviceTypeSubdeviceRoleOptions),
+				Default:      "active",
+			},
 			tagsKey: tagsSchema,
 		},
 		Importer: &schema.ResourceImporter{
@@ -72,6 +89,9 @@ func resourceNetboxDeviceTypeCreate(d *schema.ResourceData, m interface{}) error
 	} else {
 		data.Slug = strToPtr(slugValue.(string))
 	}
+
+	data.Airflow = d.Get("airflow").(string)
+	data.SubdeviceRole = d.Get("subdevice_role").(string)
 
 	manufacturerIDValue, ok := d.GetOk("manufacturer_id")
 	if ok {
@@ -130,6 +150,8 @@ func resourceNetboxDeviceTypeRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("part_number", deviceType.PartNumber)
 	d.Set("u_height", deviceType.UHeight)
 	d.Set("is_full_depth", deviceType.IsFullDepth)
+	d.Set("airflow", deviceType.Airflow)
+	d.Set("subdevice_role", deviceType.SubdeviceRole)
 	d.Set(tagsKey, getTagListFromNestedTagList(deviceType.Tags))
 
 	return nil
@@ -151,6 +173,9 @@ func resourceNetboxDeviceTypeUpdate(d *schema.ResourceData, m interface{}) error
 	} else {
 		data.Slug = strToPtr(slugValue.(string))
 	}
+
+	data.Airflow = d.Get("airflow").(string)
+	data.SubdeviceRole = d.Get("subdevice_role").(string)
 
 	manufacturerIDValue, ok := d.GetOk("manufacturer_id")
 	if ok {
