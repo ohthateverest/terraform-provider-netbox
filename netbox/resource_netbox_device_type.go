@@ -57,14 +57,14 @@ func resourceNetboxDeviceType() *schema.Resource {
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice(resourceNetboxDeviceTypeAirflowOptions, false),
 				Description:  buildValidValueDescription(resourceNetboxDeviceTypeAirflowOptions),
-				Default:      "active",
+				Default:      nil,
 			},
 			"subdevice_role": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice(resourceNetboxDeviceTypeSubdeviceRoleOptions, false),
 				Description:  buildValidValueDescription(resourceNetboxDeviceTypeSubdeviceRoleOptions),
-				Default:      "active",
+				Default:      nil,
 			},
 			tagsKey: tagsSchema,
 		},
@@ -90,8 +90,8 @@ func resourceNetboxDeviceTypeCreate(d *schema.ResourceData, m interface{}) error
 		data.Slug = strToPtr(slugValue.(string))
 	}
 
-	data.Airflow = d.Get("airflow").(string)
-	data.SubdeviceRole = d.Get("subdevice_role").(string)
+	data.Airflow = getOptionalStr(d, "airflow", false)
+	data.SubdeviceRole = getOptionalStr(d, "subdevice_role", false)
 
 	manufacturerIDValue, ok := d.GetOk("manufacturer_id")
 	if ok {
@@ -174,8 +174,8 @@ func resourceNetboxDeviceTypeUpdate(d *schema.ResourceData, m interface{}) error
 		data.Slug = strToPtr(slugValue.(string))
 	}
 
-	data.Airflow = d.Get("airflow").(string)
-	data.SubdeviceRole = d.Get("subdevice_role").(string)
+	data.Airflow = getOptionalStr(d, "airflow", false)
+	data.SubdeviceRole = getOptionalStr(d, "subdevice_role", false)
 
 	manufacturerIDValue, ok := d.GetOk("manufacturer_id")
 	if ok {
