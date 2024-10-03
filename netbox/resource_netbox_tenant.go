@@ -43,6 +43,11 @@ func resourceNetboxTenant() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"comments": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			customFieldsKey: customFieldsSchema,
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -56,6 +61,7 @@ func resourceNetboxTenantCreate(d *schema.ResourceData, m interface{}) error {
 	name := d.Get("name").(string)
 	groupID := int64(d.Get("group_id").(int))
 	description := d.Get("description").(string)
+	comments := d.Get("comments").(string)
 
 	slugValue, slugOk := d.GetOk("slug")
 	var slug string
@@ -74,9 +80,15 @@ func resourceNetboxTenantCreate(d *schema.ResourceData, m interface{}) error {
 	data.Slug = &slug
 	data.Description = description
 	data.Tags = tags
+	data.Comments = comments
 
 	if groupID != 0 {
 		data.Group = &groupID
+	}
+
+	ct, ok := d.GetOk(customFieldsKey)
+	if ok {
+		data.CustomFields = ct
 	}
 
 	params := tenancy.NewTenancyTenantsCreateParams().WithData(data)
@@ -112,10 +124,14 @@ func resourceNetboxTenantRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("name", res.GetPayload().Name)
 	d.Set("slug", res.GetPayload().Slug)
 	d.Set("description", res.GetPayload().Description)
+	d.Set("comments", res.GetPayload().Comments)
 	if res.GetPayload().Group != nil {
 		d.Set("group_id", res.GetPayload().Group.ID)
 	}
-
+	cf := getCustomFields(res.GetPayload().CustomFields)
+	if cf != nil {
+		d.Set(customFieldsKey, cf)
+	}
 	return nil
 }
 
@@ -127,6 +143,7 @@ func resourceNetboxTenantUpdate(d *schema.ResourceData, m interface{}) error {
 
 	name := d.Get("name").(string)
 	description := d.Get("description").(string)
+	comments := d.Get("comments").(string)
 	groupID := int64(d.Get("group_id").(int))
 	slugValue, slugOk := d.GetOk("slug")
 	var slug string
@@ -142,11 +159,15 @@ func resourceNetboxTenantUpdate(d *schema.ResourceData, m interface{}) error {
 	data.Slug = &slug
 	data.Name = &name
 	data.Description = description
+	data.Comments = comments
 	data.Tags = tags
 	if groupID != 0 {
 		data.Group = &groupID
 	}
-
+	cf, ok := d.GetOk(customFieldsKey)
+	if ok {
+		data.CustomFields = cf
+	}
 	params := tenancy.NewTenancyTenantsPartialUpdateParams().WithID(id).WithData(&data)
 
 	_, err := api.Tenancy.TenancyTenantsPartialUpdate(params, nil)
